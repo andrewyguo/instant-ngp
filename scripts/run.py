@@ -61,12 +61,15 @@ def parse_args():
 
 	parser.add_argument("--gui", action="store_true", help="Run the testbed GUI interactively.")
 	parser.add_argument("--train", action="store_true", help="If the GUI is enabled, controls whether training starts immediately.")
-	parser.add_argument("--n_steps", type=int, default=-1, help="Number of steps to train for before quitting.")
+	parser.add_argument("--n_steps", type=int, default=10000, help="Number of steps to train for before quitting.")
 	parser.add_argument("--second_window", action="store_true", help="Open a second window containing a copy of the main output.")
 	parser.add_argument("--vr", action="store_true", help="Render to a VR headset.")
 
 	parser.add_argument("--sharpen", default=0, help="Set amount of sharpening applied to NeRF training images. Range 0.0 to 1.0.")
 
+	# Special Args 
+	parser.add_argument("--andrewg_hack", action="store_true", help="Hack to switch to random background 75 percent through training.")
+	parser.add_argument("--no_train_extrinsics", action="store_true", help="Do not train extrinics ")
 
 	return parser.parse_args()
 
@@ -86,6 +89,11 @@ if __name__ == "__main__":
 
 	testbed = ngp.Testbed()
 	testbed.root_dir = ROOT_DIR
+
+	testbed.nerf.training.optimize_extrinsics = True if not args.no_train_extrinsics else False
+	testbed.background_color = [0, 0, 0, 0]
+	if args.andrewg_hack: 
+		testbed.nerf.training.random_bg_color = False
 
 	for file in args.files:
 		scene_info = get_scene(file)
@@ -200,6 +208,9 @@ if __name__ == "__main__":
 					t.set_postfix(loss=testbed.loss)
 					old_training_step = testbed.training_step
 					tqdm_last_update = now
+				
+				if args.andrewg_hack and testbed.training_step >= n_steps * 0.75:
+					testbed.nerf.training.random_bg_color = True
 
 	if args.save_snapshot:
 		testbed.save_snapshot(args.save_snapshot, False)
